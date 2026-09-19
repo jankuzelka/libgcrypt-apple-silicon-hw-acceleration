@@ -1,0 +1,1136 @@
+From f79a7dc5f81aa71b078ab234c205313509862cce Mon Sep 17 00:00:00 2001
+From: Jan Kuzelka <jan@kuzelka.dev>
+Date: Fri, 17 Apr 2026 11:44:02 +0200
+Subject: [PATCH 4/5] aarch64: fix symbol naming for Mach-O (FUNC_NAME)
+
+Apply FUNC_NAME macro to all AArch64 assembly symbols to ensure
+correct leading underscore handling on macOS.
+
+No functional changes.
+---
+ cipher/asm-poly1305-aarch64.h        |   8 +-
+ cipher/camellia-aarch64.S            |  16 ++--
+ cipher/chacha20-aarch64.S            |  16 ++--
+ cipher/cipher-gcm-armv8-aarch64-ce.S |  24 ++---
+ cipher/rijndael-aarch64.S            |  16 ++--
+ cipher/rijndael-armv8-aarch64-ce.S   | 136 +++++++++++++--------------
+ cipher/sha1-armv8-aarch64-ce.S       |   8 +-
+ cipher/sha256-armv8-aarch64-ce.S     |   8 +-
+ cipher/sha512-armv8-aarch64-ce.S     |   8 +-
+ cipher/sm3-aarch64.S                 |   8 +-
+ cipher/sm3-armv8-aarch64-ce.S        |   8 +-
+ cipher/sm4-aarch64.S                 |  40 ++++----
+ cipher/sm4-armv8-aarch64-ce.S        |  56 +++++------
+ cipher/sm4-armv9-aarch64-sve-ce.S    |  40 ++++----
+ cipher/twofish-aarch64.S             |  16 ++--
+ 15 files changed, 204 insertions(+), 204 deletions(-)
+
+diff --git a/cipher/asm-poly1305-aarch64.h b/cipher/asm-poly1305-aarch64.h
+index 2f05aae..04dcd4a 100644
+--- a/cipher/asm-poly1305-aarch64.h
++++ b/cipher/asm-poly1305-aarch64.h
+@@ -181,9 +181,9 @@
+ #ifdef TESTING_POLY1305_ASM
+ /* for testing only. */
+ .align 3
+-.globl _gcry_poly1305_aarch64_blocks1
+-ELF(.type _gcry_poly1305_aarch64_blocks1,%function;)
+-_gcry_poly1305_aarch64_blocks1:
++.globl FUNC_NAME(_gcry_poly1305_aarch64_blocks1)
++ELF(.type FUNC_NAME(_gcry_poly1305_aarch64_blocks1),%function;)
++FUNC_NAME(_gcry_poly1305_aarch64_blocks1):
+ 	/* input:
+ 	 *	x0: poly1305-state
+ 	 *	x1: src
+@@ -239,7 +239,7 @@ _gcry_poly1305_aarch64_blocks1:
+ 	POLY1305_POP_REGS();
+ 	ret_spec_stop;
+ 	CFI_ENDPROC()
+-ELF(.size _gcry_poly1305_aarch64_blocks1, .-_gcry_poly1305_aarch64_blocks1;)
++ELF(.size FUNC_NAME(_gcry_poly1305_aarch64_blocks1), .-FUNC_NAME(_gcry_poly1305_aarch64_blocks1);)
+ #endif
+ 
+ #endif /* GCRY_ASM_POLY1305_AARCH64_H */
+diff --git a/cipher/camellia-aarch64.S b/cipher/camellia-aarch64.S
+index 9041641..8ed10b5 100644
+--- a/cipher/camellia-aarch64.S
++++ b/cipher/camellia-aarch64.S
+@@ -197,11 +197,11 @@
+ 	eor YR, YR, RT1; \
+ 	str_output_be(RDST, YL, YR, XL, XR, RT0, RT1);
+ 
+-.globl _gcry_camellia_arm_encrypt_block
+-ELF(.type   _gcry_camellia_arm_encrypt_block,@function;)
++.globl FUNC_NAME(_gcry_camellia_arm_encrypt_block)
++ELF(.type   FUNC_NAME(_gcry_camellia_arm_encrypt_block),@function;)
+ 
+ .align 4
+-_gcry_camellia_arm_encrypt_block:
++FUNC_NAME(_gcry_camellia_arm_encrypt_block):
+ 	CFI_STARTPROC()
+ 	stp x19, x20, [sp, #-16]!
+ 	CFI_ADJUST_CFA_OFFSET(16)
+@@ -254,13 +254,13 @@ _gcry_camellia_arm_encrypt_block:
+ 	CFI_RESTORE(x20)
+ 	ret_spec_stop;
+ 	CFI_ENDPROC()
+-ELF(.size _gcry_camellia_arm_encrypt_block,.-_gcry_camellia_arm_encrypt_block;)
++ELF(.size FUNC_NAME(_gcry_camellia_arm_encrypt_block),.-FUNC_NAME(_gcry_camellia_arm_encrypt_block);)
+ 
+-.globl _gcry_camellia_arm_decrypt_block
+-ELF(.type   _gcry_camellia_arm_decrypt_block,@function;)
++.globl FUNC_NAME(_gcry_camellia_arm_decrypt_block)
++ELF(.type   FUNC_NAME(_gcry_camellia_arm_decrypt_block),@function;)
+ 
+ .align 4
+-_gcry_camellia_arm_decrypt_block:
++FUNC_NAME(_gcry_camellia_arm_decrypt_block):
+ 	CFI_STARTPROC()
+ 	stp x19, x20, [sp, #-16]!
+ 	CFI_ADJUST_CFA_OFFSET(16)
+@@ -309,7 +309,7 @@ _gcry_camellia_arm_decrypt_block:
+ 
+ 	b .Ldec_128;
+ 	CFI_ENDPROC()
+-ELF(.size _gcry_camellia_arm_decrypt_block,.-_gcry_camellia_arm_decrypt_block;)
++ELF(.size FUNC_NAME(_gcry_camellia_arm_decrypt_block),.-FUNC_NAME(_gcry_camellia_arm_decrypt_block);)
+ 
+ /* Encryption/Decryption tables */
+ SECTION_RODATA
+diff --git a/cipher/chacha20-aarch64.S b/cipher/chacha20-aarch64.S
+index 692f0f6..f4a0570 100644
+--- a/cipher/chacha20-aarch64.S
++++ b/cipher/chacha20-aarch64.S
+@@ -196,10 +196,10 @@ _gcry_chacha20_aarch64_blocks4_data_rot8:
+ .text
+ 
+ .align 4
+-.globl _gcry_chacha20_aarch64_blocks4
+-ELF(.type _gcry_chacha20_aarch64_blocks4,%function;)
++.globl FUNC_NAME(_gcry_chacha20_aarch64_blocks4)
++ELF(.type FUNC_NAME(_gcry_chacha20_aarch64_blocks4),%function;)
+ 
+-_gcry_chacha20_aarch64_blocks4:
++FUNC_NAME(_gcry_chacha20_aarch64_blocks4):
+ 	/* input:
+ 	 *	x0: input
+ 	 *	x1: dst
+@@ -360,17 +360,17 @@ _gcry_chacha20_aarch64_blocks4:
+ 	eor x0, x0, x0
+ 	ret_spec_stop
+ 	CFI_ENDPROC()
+-ELF(.size _gcry_chacha20_aarch64_blocks4, .-_gcry_chacha20_aarch64_blocks4;)
++ELF(.size FUNC_NAME(_gcry_chacha20_aarch64_blocks4), .-FUNC_NAME(_gcry_chacha20_aarch64_blocks4);)
+ 
+ /**********************************************************************
+   4-way stitched chacha20-poly1305
+  **********************************************************************/
+ 
+ .align 4
+-.globl _gcry_chacha20_poly1305_aarch64_blocks4
+-ELF(.type _gcry_chacha20_poly1305_aarch64_blocks4,%function;)
++.globl FUNC_NAME(_gcry_chacha20_poly1305_aarch64_blocks4)
++ELF(.type FUNC_NAME(_gcry_chacha20_poly1305_aarch64_blocks4),%function;)
+ 
+-_gcry_chacha20_poly1305_aarch64_blocks4:
++FUNC_NAME(_gcry_chacha20_poly1305_aarch64_blocks4):
+ 	/* input:
+ 	 *	x0: input
+ 	 *	x1: dst
+@@ -645,6 +645,6 @@ _gcry_chacha20_poly1305_aarch64_blocks4:
+ 	POLY1305_POP_REGS()
+ 	ret_spec_stop
+ 	CFI_ENDPROC()
+-ELF(.size _gcry_chacha20_poly1305_aarch64_blocks4, .-_gcry_chacha20_poly1305_aarch64_blocks4;)
++ELF(.size FUNC_NAME(_gcry_chacha20_poly1305_aarch64_blocks4), .-FUNC_NAME(_gcry_chacha20_poly1305_aarch64_blocks4);)
+ 
+ #endif
+diff --git a/cipher/cipher-gcm-armv8-aarch64-ce.S b/cipher/cipher-gcm-armv8-aarch64-ce.S
+index 4cb6321..adda63c 100644
+--- a/cipher/cipher-gcm-armv8-aarch64-ce.S
++++ b/cipher/cipher-gcm-armv8-aarch64-ce.S
+@@ -158,9 +158,9 @@ gcry_gcm_reduction_constant:
+  *                                          void *gcm_table);
+  */
+ .align 4
+-.globl _gcry_ghash_armv8_ce_pmull
+-ELF(.type  _gcry_ghash_armv8_ce_pmull,%function;)
+-_gcry_ghash_armv8_ce_pmull:
++.globl FUNC_NAME(_gcry_ghash_armv8_ce_pmull)
++ELF(.type  FUNC_NAME(_gcry_ghash_armv8_ce_pmull),%function;)
++FUNC_NAME(_gcry_ghash_armv8_ce_pmull):
+   /* input:
+    *    x0: gcm_key
+    *    x1: result/hash
+@@ -348,7 +348,7 @@ _gcry_ghash_armv8_ce_pmull:
+   mov x0, #0
+   ret_spec_stop
+   CFI_ENDPROC()
+-ELF(.size _gcry_ghash_armv8_ce_pmull,.-_gcry_ghash_armv8_ce_pmull;)
++ELF(.size FUNC_NAME(_gcry_ghash_armv8_ce_pmull),.-FUNC_NAME(_gcry_ghash_armv8_ce_pmull);)
+ 
+ 
+ /*
+@@ -357,9 +357,9 @@ ELF(.size _gcry_ghash_armv8_ce_pmull,.-_gcry_ghash_armv8_ce_pmull;)
+  *                                            void *gcm_table);
+  */
+ .align 4
+-.globl _gcry_polyval_armv8_ce_pmull
+-ELF(.type  _gcry_polyval_armv8_ce_pmull,%function;)
+-_gcry_polyval_armv8_ce_pmull:
++.globl FUNC_NAME(_gcry_polyval_armv8_ce_pmull)
++ELF(.type  FUNC_NAME(_gcry_polyval_armv8_ce_pmull),%function;)
++FUNC_NAME(_gcry_polyval_armv8_ce_pmull):
+   /* input:
+    *    x0: gcm_key
+    *    x1: result/hash
+@@ -576,16 +576,16 @@ _gcry_polyval_armv8_ce_pmull:
+   mov x0, #0
+   ret_spec_stop
+   CFI_ENDPROC()
+-ELF(.size _gcry_polyval_armv8_ce_pmull,.-_gcry_polyval_armv8_ce_pmull;)
++ELF(.size FUNC_NAME(_gcry_polyval_armv8_ce_pmull),.-FUNC_NAME(_gcry_polyval_armv8_ce_pmull);)
+ 
+ 
+ /*
+  * void _gcry_ghash_setup_armv8_ce_pmull (void *gcm_key, void *gcm_table);
+  */
+ .align 4
+-.globl _gcry_ghash_setup_armv8_ce_pmull
+-ELF(.type  _gcry_ghash_setup_armv8_ce_pmull,%function;)
+-_gcry_ghash_setup_armv8_ce_pmull:
++.globl FUNC_NAME(_gcry_ghash_setup_armv8_ce_pmull)
++ELF(.type  FUNC_NAME(_gcry_ghash_setup_armv8_ce_pmull),%function;)
++FUNC_NAME(_gcry_ghash_setup_armv8_ce_pmull):
+   /* input:
+    *	x0: gcm_key
+    *	x1: gcm_table
+@@ -638,6 +638,6 @@ _gcry_ghash_setup_armv8_ce_pmull:
+ 
+   ret_spec_stop
+   CFI_ENDPROC()
+-ELF(.size _gcry_ghash_setup_armv8_ce_pmull,.-_gcry_ghash_setup_armv8_ce_pmull;)
++ELF(.size FUNC_NAME(_gcry_ghash_setup_armv8_ce_pmull),.-FUNC_NAME(_gcry_ghash_setup_armv8_ce_pmull);)
+ 
+ #endif
+diff --git a/cipher/rijndael-aarch64.S b/cipher/rijndael-aarch64.S
+index 90998de..7399f5d 100644
+--- a/cipher/rijndael-aarch64.S
++++ b/cipher/rijndael-aarch64.S
+@@ -205,11 +205,11 @@
+ 	do_lastencround(ra, rb, rc, rd, rna, rnb, rnc, rnd); \
+ 	addroundkey(rna, rnb, rnc, rnd, ra, rb, rc, rd, dummy);
+ 
+-.globl _gcry_aes_arm_encrypt_block
+-ELF(.type   _gcry_aes_arm_encrypt_block,%function;)
++.globl FUNC_NAME(_gcry_aes_arm_encrypt_block)
++ELF(.type   FUNC_NAME(_gcry_aes_arm_encrypt_block),%function;)
+ 
+ .align 4
+-_gcry_aes_arm_encrypt_block:
++FUNC_NAME(_gcry_aes_arm_encrypt_block):
+ 	/* input:
+ 	 *	%x0: keysched, CTX
+ 	 *	%x1: dst
+@@ -286,7 +286,7 @@ _gcry_aes_arm_encrypt_block:
+ 
+ 	b .Lenc_done;
+ 	CFI_ENDPROC();
+-ELF(.size _gcry_aes_arm_encrypt_block,.-_gcry_aes_arm_encrypt_block;)
++ELF(.size FUNC_NAME(_gcry_aes_arm_encrypt_block),.-FUNC_NAME(_gcry_aes_arm_encrypt_block);)
+ 
+ #define addroundkey_dec(round, ra, rb, rc, rd, rna, rnb, rnc, rnd) \
+ 	ldr rna, [CTX, #(((round) * 16) + 0 * 4)]; \
+@@ -429,11 +429,11 @@ ELF(.size _gcry_aes_arm_encrypt_block,.-_gcry_aes_arm_encrypt_block;)
+ 	do_lastdecround(ra, rb, rc, rd, rna, rnb, rnc, rnd); \
+ 	addroundkey(rna, rnb, rnc, rnd, ra, rb, rc, rd, dummy);
+ 
+-.globl _gcry_aes_arm_decrypt_block
+-ELF(.type   _gcry_aes_arm_decrypt_block,%function;)
++.globl FUNC_NAME(_gcry_aes_arm_decrypt_block)
++ELF(.type   FUNC_NAME(_gcry_aes_arm_decrypt_block),%function;)
+ 
+ .align 4
+-_gcry_aes_arm_decrypt_block:
++FUNC_NAME(_gcry_aes_arm_decrypt_block):
+ 	/* input:
+ 	 *	%x0: keysched, CTX
+ 	 *	%x1: dst
+@@ -506,7 +506,7 @@ _gcry_aes_arm_decrypt_block:
+ 
+ 	b .Ldec_tail;
+ 	CFI_ENDPROC();
+-ELF(.size _gcry_aes_arm_decrypt_block,.-_gcry_aes_arm_decrypt_block;)
++ELF(.size FUNC_NAME(_gcry_aes_arm_decrypt_block),.-FUNC_NAME(_gcry_aes_arm_decrypt_block);)
+ 
+ #endif /*HAVE_COMPATIBLE_GCC_AARCH64_PLATFORM_AS*/
+ #endif /*__AARCH64EL__ */
+diff --git a/cipher/rijndael-armv8-aarch64-ce.S b/cipher/rijndael-armv8-aarch64-ce.S
+index 64f67fb..7d86df7 100644
+--- a/cipher/rijndael-armv8-aarch64-ce.S
++++ b/cipher/rijndael-armv8-aarch64-ce.S
+@@ -263,9 +263,9 @@
+  *                                     unsigned int nrounds);
+  */
+ .align 4
+-.globl _gcry_aes_enc_armv8_ce
+-ELF(.type  _gcry_aes_enc_armv8_ce,%function;)
+-_gcry_aes_enc_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_enc_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_enc_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_enc_armv8_ce):
+   /* input:
+    *    x0: keysched
+    *    x1: dst
+@@ -318,7 +318,7 @@ _gcry_aes_enc_armv8_ce:
+   CLEAR_REG(vk13)
+   b .Lenc1_tail
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_enc_armv8_ce,.-_gcry_aes_enc_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_enc_armv8_ce),.-FUNC_NAME(_gcry_aes_enc_armv8_ce);)
+ 
+ 
+ /*
+@@ -327,9 +327,9 @@ ELF(.size _gcry_aes_enc_armv8_ce,.-_gcry_aes_enc_armv8_ce;)
+  *                                     unsigned int nrounds);
+  */
+ .align 4
+-.globl _gcry_aes_dec_armv8_ce
+-ELF(.type  _gcry_aes_dec_armv8_ce,%function;)
+-_gcry_aes_dec_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_dec_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_dec_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_dec_armv8_ce):
+   /* input:
+    *    x0: keysched
+    *    x1: dst
+@@ -382,7 +382,7 @@ _gcry_aes_dec_armv8_ce:
+   CLEAR_REG(vk13)
+   b .Ldec1_tail
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_dec_armv8_ce,.-_gcry_aes_dec_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_dec_armv8_ce),.-FUNC_NAME(_gcry_aes_dec_armv8_ce);)
+ 
+ 
+ /*
+@@ -393,9 +393,9 @@ ELF(.size _gcry_aes_dec_armv8_ce,.-_gcry_aes_dec_armv8_ce;)
+  */
+ 
+ .align 4
+-.globl _gcry_aes_ecb_enc_armv8_ce
+-ELF(.type  _gcry_aes_ecb_enc_armv8_ce,%function;)
+-_gcry_aes_ecb_enc_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_ecb_enc_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_ecb_enc_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_ecb_enc_armv8_ce):
+   /* input:
+    *    x0: keysched
+    *    x1: outbuf
+@@ -451,7 +451,7 @@ _gcry_aes_ecb_enc_armv8_ce:
+ .Lecb_enc_skip:
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_ecb_enc_armv8_ce,.-_gcry_aes_ecb_enc_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_ecb_enc_armv8_ce),.-FUNC_NAME(_gcry_aes_ecb_enc_armv8_ce);)
+ 
+ 
+ /*
+@@ -462,9 +462,9 @@ ELF(.size _gcry_aes_ecb_enc_armv8_ce,.-_gcry_aes_ecb_enc_armv8_ce;)
+  */
+ 
+ .align 4
+-.globl _gcry_aes_ecb_dec_armv8_ce
+-ELF(.type  _gcry_aes_ecb_dec_armv8_ce,%function;)
+-_gcry_aes_ecb_dec_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_ecb_dec_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_ecb_dec_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_ecb_dec_armv8_ce):
+   /* input:
+    *    x0: keysched
+    *    x1: outbuf
+@@ -495,7 +495,7 @@ _gcry_aes_ecb_dec_armv8_ce:
+ .Lecb_dec_skip:
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_ecb_dec_armv8_ce,.-_gcry_aes_ecb_dec_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_ecb_dec_armv8_ce),.-FUNC_NAME(_gcry_aes_ecb_dec_armv8_ce);)
+ 
+ 
+ /*
+@@ -507,9 +507,9 @@ ELF(.size _gcry_aes_ecb_dec_armv8_ce,.-_gcry_aes_ecb_dec_armv8_ce;)
+  */
+ 
+ .align 4
+-.globl _gcry_aes_cbc_enc_armv8_ce
+-ELF(.type  _gcry_aes_cbc_enc_armv8_ce,%function;)
+-_gcry_aes_cbc_enc_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_cbc_enc_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_cbc_enc_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_cbc_enc_armv8_ce):
+   /* input:
+    *    x0: keysched
+    *    x1: outbuf
+@@ -578,7 +578,7 @@ _gcry_aes_cbc_enc_armv8_ce:
+ .Lcbc_enc_skip:
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_cbc_enc_armv8_ce,.-_gcry_aes_cbc_enc_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_cbc_enc_armv8_ce),.-FUNC_NAME(_gcry_aes_cbc_enc_armv8_ce);)
+ 
+ /*
+  * void _gcry_aes_cbc_dec_armv8_ce (const void *keysched,
+@@ -589,9 +589,9 @@ ELF(.size _gcry_aes_cbc_enc_armv8_ce,.-_gcry_aes_cbc_enc_armv8_ce;)
+  */
+ 
+ .align 4
+-.globl _gcry_aes_cbc_dec_armv8_ce
+-ELF(.type  _gcry_aes_cbc_dec_armv8_ce,%function;)
+-_gcry_aes_cbc_dec_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_cbc_dec_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_cbc_dec_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_cbc_dec_armv8_ce):
+   /* input:
+    *    x0: keysched
+    *    x1: outbuf
+@@ -700,7 +700,7 @@ _gcry_aes_cbc_dec_armv8_ce:
+ .Lcbc_dec_skip:
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_cbc_dec_armv8_ce,.-_gcry_aes_cbc_dec_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_cbc_dec_armv8_ce),.-FUNC_NAME(_gcry_aes_cbc_dec_armv8_ce);)
+ 
+ 
+ /*
+@@ -711,9 +711,9 @@ ELF(.size _gcry_aes_cbc_dec_armv8_ce,.-_gcry_aes_cbc_dec_armv8_ce;)
+  */
+ 
+ .align 4
+-.globl _gcry_aes_ctr_enc_armv8_ce
+-ELF(.type  _gcry_aes_ctr_enc_armv8_ce,%function;)
+-_gcry_aes_ctr_enc_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_ctr_enc_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_ctr_enc_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_ctr_enc_armv8_ce):
+   /* input:
+    *    r0: keysched
+    *    r1: outbuf
+@@ -893,7 +893,7 @@ _gcry_aes_ctr_enc_armv8_ce:
+ .Lctr_enc_skip:
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_ctr_enc_armv8_ce,.-_gcry_aes_ctr_enc_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_ctr_enc_armv8_ce),.-FUNC_NAME(_gcry_aes_ctr_enc_armv8_ce);)
+ 
+ 
+ /*
+@@ -905,9 +905,9 @@ ELF(.size _gcry_aes_ctr_enc_armv8_ce,.-_gcry_aes_ctr_enc_armv8_ce;)
+  */
+ 
+ .align 4
+-.globl _gcry_aes_ctr32le_enc_armv8_ce
+-ELF(.type  _gcry_aes_ctr32le_enc_armv8_ce,%function;)
+-_gcry_aes_ctr32le_enc_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_ctr32le_enc_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_ctr32le_enc_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_ctr32le_enc_armv8_ce):
+   /* input:
+    *    r0: keysched
+    *    r1: outbuf
+@@ -1040,7 +1040,7 @@ _gcry_aes_ctr32le_enc_armv8_ce:
+ .Lctr32le_enc_skip:
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_ctr32le_enc_armv8_ce,.-_gcry_aes_ctr32le_enc_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_ctr32le_enc_armv8_ce),.-FUNC_NAME(_gcry_aes_ctr32le_enc_armv8_ce);)
+ 
+ 
+ /*
+@@ -1051,9 +1051,9 @@ ELF(.size _gcry_aes_ctr32le_enc_armv8_ce,.-_gcry_aes_ctr32le_enc_armv8_ce;)
+  */
+ 
+ .align 4
+-.globl _gcry_aes_cfb_enc_armv8_ce
+-ELF(.type  _gcry_aes_cfb_enc_armv8_ce,%function;)
+-_gcry_aes_cfb_enc_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_cfb_enc_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_cfb_enc_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_cfb_enc_armv8_ce):
+   /* input:
+    *    r0: keysched
+    *    r1: outbuf
+@@ -1122,7 +1122,7 @@ _gcry_aes_cfb_enc_armv8_ce:
+ .Lcfb_enc_skip:
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_cfb_enc_armv8_ce,.-_gcry_aes_cfb_enc_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_cfb_enc_armv8_ce),.-FUNC_NAME(_gcry_aes_cfb_enc_armv8_ce);)
+ 
+ 
+ /*
+@@ -1133,9 +1133,9 @@ ELF(.size _gcry_aes_cfb_enc_armv8_ce,.-_gcry_aes_cfb_enc_armv8_ce;)
+  */
+ 
+ .align 4
+-.globl _gcry_aes_cfb_dec_armv8_ce
+-ELF(.type  _gcry_aes_cfb_dec_armv8_ce,%function;)
+-_gcry_aes_cfb_dec_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_cfb_dec_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_cfb_dec_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_cfb_dec_armv8_ce):
+   /* input:
+    *    r0: keysched
+    *    r1: outbuf
+@@ -1246,7 +1246,7 @@ _gcry_aes_cfb_dec_armv8_ce:
+ .Lcfb_dec_skip:
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_cfb_dec_armv8_ce,.-_gcry_aes_cfb_dec_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_cfb_dec_armv8_ce),.-FUNC_NAME(_gcry_aes_cfb_dec_armv8_ce);)
+ 
+ 
+ /*
+@@ -1262,9 +1262,9 @@ ELF(.size _gcry_aes_cfb_dec_armv8_ce,.-_gcry_aes_cfb_dec_armv8_ce;)
+  */
+ 
+ .align 4
+-.globl _gcry_aes_ocb_enc_armv8_ce
+-ELF(.type  _gcry_aes_ocb_enc_armv8_ce,%function;)
+-_gcry_aes_ocb_enc_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_ocb_enc_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_ocb_enc_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_ocb_enc_armv8_ce):
+   /* input:
+    *    x0: keysched
+    *    x1: outbuf
+@@ -1496,7 +1496,7 @@ _gcry_aes_ocb_enc_armv8_ce:
+   mov x0, #0
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_ocb_enc_armv8_ce,.-_gcry_aes_ocb_enc_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_ocb_enc_armv8_ce),.-FUNC_NAME(_gcry_aes_ocb_enc_armv8_ce);)
+ 
+ 
+ /*
+@@ -1512,9 +1512,9 @@ ELF(.size _gcry_aes_ocb_enc_armv8_ce,.-_gcry_aes_ocb_enc_armv8_ce;)
+  */
+ 
+ .align 4
+-.globl _gcry_aes_ocb_dec_armv8_ce
+-ELF(.type  _gcry_aes_ocb_dec_armv8_ce,%function;)
+-_gcry_aes_ocb_dec_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_ocb_dec_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_ocb_dec_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_ocb_dec_armv8_ce):
+   /* input:
+    *    x0: keysched
+    *    x1: outbuf
+@@ -1576,7 +1576,7 @@ _gcry_aes_ocb_dec_armv8_ce:
+   mov x0, #0
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_ocb_dec_armv8_ce,.-_gcry_aes_ocb_dec_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_ocb_dec_armv8_ce),.-FUNC_NAME(_gcry_aes_ocb_dec_armv8_ce);)
+ 
+ 
+ /*
+@@ -1591,9 +1591,9 @@ ELF(.size _gcry_aes_ocb_dec_armv8_ce,.-_gcry_aes_ocb_dec_armv8_ce;)
+  */
+ 
+ .align 4
+-.globl _gcry_aes_ocb_auth_armv8_ce
+-ELF(.type  _gcry_aes_ocb_auth_armv8_ce,%function;)
+-_gcry_aes_ocb_auth_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_ocb_auth_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_ocb_auth_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_ocb_auth_armv8_ce):
+   /* input:
+    *    x0: keysched
+    *    x1: abuf
+@@ -1724,7 +1724,7 @@ _gcry_aes_ocb_auth_armv8_ce:
+   mov x0, #0
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_ocb_auth_armv8_ce,.-_gcry_aes_ocb_auth_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_ocb_auth_armv8_ce),.-FUNC_NAME(_gcry_aes_ocb_auth_armv8_ce);)
+ 
+ 
+ /*
+@@ -1737,9 +1737,9 @@ ELF(.size _gcry_aes_ocb_auth_armv8_ce,.-_gcry_aes_ocb_auth_armv8_ce;)
+  */
+ 
+ .align 4
+-.globl _gcry_aes_xts_enc_armv8_ce
+-ELF(.type  _gcry_aes_xts_enc_armv8_ce,%function;)
+-_gcry_aes_xts_enc_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_xts_enc_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_xts_enc_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_xts_enc_armv8_ce):
+   /* input:
+    *    r0: keysched
+    *    r1: outbuf
+@@ -1925,7 +1925,7 @@ _gcry_aes_xts_enc_armv8_ce:
+ .Lxts_enc_skip:
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_xts_enc_armv8_ce,.-_gcry_aes_xts_enc_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_xts_enc_armv8_ce),.-FUNC_NAME(_gcry_aes_xts_enc_armv8_ce);)
+ 
+ 
+ /*
+@@ -1938,9 +1938,9 @@ ELF(.size _gcry_aes_xts_enc_armv8_ce,.-_gcry_aes_xts_enc_armv8_ce;)
+  */
+ 
+ .align 4
+-.globl _gcry_aes_xts_dec_armv8_ce
+-ELF(.type  _gcry_aes_xts_dec_armv8_ce,%function;)
+-_gcry_aes_xts_dec_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_xts_dec_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_xts_dec_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_xts_dec_armv8_ce):
+   /* input:
+    *    r0: keysched
+    *    r1: outbuf
+@@ -1993,16 +1993,16 @@ _gcry_aes_xts_dec_armv8_ce:
+ .Lxts_dec_skip:
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_xts_dec_armv8_ce,.-_gcry_aes_xts_dec_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_xts_dec_armv8_ce),.-FUNC_NAME(_gcry_aes_xts_dec_armv8_ce);)
+ 
+ 
+ /*
+  * u32 _gcry_aes_sbox4_armv8_ce(u32 in4b);
+  */
+ .align 4
+-.globl _gcry_aes_sbox4_armv8_ce
+-ELF(.type  _gcry_aes_sbox4_armv8_ce,%function;)
+-_gcry_aes_sbox4_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_sbox4_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_sbox4_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_sbox4_armv8_ce):
+   /* See "Gouvêa, C. P. L. & López, J. Implementing GCM on ARMv8. Topics in
+    * Cryptology — CT-RSA 2015" for details.
+    */
+@@ -2016,16 +2016,16 @@ _gcry_aes_sbox4_armv8_ce:
+   CLEAR_REG(v0)
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_sbox4_armv8_ce,.-_gcry_aes_sbox4_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_sbox4_armv8_ce),.-FUNC_NAME(_gcry_aes_sbox4_armv8_ce);)
+ 
+ 
+ /*
+  * void _gcry_aes_invmixcol_armv8_ce(void *dst, const void *src);
+  */
+ .align 4
+-.globl _gcry_aes_invmixcol_armv8_ce
+-ELF(.type  _gcry_aes_invmixcol_armv8_ce,%function;)
+-_gcry_aes_invmixcol_armv8_ce:
++.globl FUNC_NAME(_gcry_aes_invmixcol_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_aes_invmixcol_armv8_ce),%function;)
++FUNC_NAME(_gcry_aes_invmixcol_armv8_ce):
+   CFI_STARTPROC();
+   ld1 {v0.16b}, [x1]
+   aesimc v0.16b, v0.16b
+@@ -2033,6 +2033,6 @@ _gcry_aes_invmixcol_armv8_ce:
+   CLEAR_REG(v0)
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_aes_invmixcol_armv8_ce,.-_gcry_aes_invmixcol_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_aes_invmixcol_armv8_ce),.-FUNC_NAME(_gcry_aes_invmixcol_armv8_ce);)
+ 
+ #endif
+diff --git a/cipher/sha1-armv8-aarch64-ce.S b/cipher/sha1-armv8-aarch64-ce.S
+index e309c08..3e5a673 100644
+--- a/cipher/sha1-armv8-aarch64-ce.S
++++ b/cipher/sha1-armv8-aarch64-ce.S
+@@ -100,9 +100,9 @@ gcry_sha1_aarch64_ce_K_VEC:
+  *                                size_t nblks)
+  */
+ .align 4
+-.globl _gcry_sha1_transform_armv8_ce
+-ELF(.type  _gcry_sha1_transform_armv8_ce,%function;)
+-_gcry_sha1_transform_armv8_ce:
++.globl FUNC_NAME(_gcry_sha1_transform_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_sha1_transform_armv8_ce),%function;)
++FUNC_NAME(_gcry_sha1_transform_armv8_ce):
+   /* input:
+    *	x0: ctx, CTX
+    *	x1: data (64*nblks bytes)
+@@ -199,6 +199,6 @@ _gcry_sha1_transform_armv8_ce:
+   mov x0, #0
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_sha1_transform_armv8_ce,.-_gcry_sha1_transform_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_sha1_transform_armv8_ce),.-FUNC_NAME(_gcry_sha1_transform_armv8_ce);)
+ 
+ #endif
+diff --git a/cipher/sha256-armv8-aarch64-ce.S b/cipher/sha256-armv8-aarch64-ce.S
+index 333e792..01afa5e 100644
+--- a/cipher/sha256-armv8-aarch64-ce.S
++++ b/cipher/sha256-armv8-aarch64-ce.S
+@@ -110,9 +110,9 @@ gcry_sha256_aarch64_ce_K:
+  *                                  size_t num_blks)
+  */
+ .align 4
+-.globl _gcry_sha256_transform_armv8_ce
+-ELF(.type  _gcry_sha256_transform_armv8_ce,%function;)
+-_gcry_sha256_transform_armv8_ce:
++.globl FUNC_NAME(_gcry_sha256_transform_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_sha256_transform_armv8_ce),%function;)
++FUNC_NAME(_gcry_sha256_transform_armv8_ce):
+   /* input:
+    *	r0: ctx, CTX
+    *	r1: data (64*nblks bytes)
+@@ -213,6 +213,6 @@ _gcry_sha256_transform_armv8_ce:
+   mov x0, #0
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_sha256_transform_armv8_ce,.-_gcry_sha256_transform_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_sha256_transform_armv8_ce),.-FUNC_NAME(_gcry_sha256_transform_armv8_ce);)
+ 
+ #endif
+diff --git a/cipher/sha512-armv8-aarch64-ce.S b/cipher/sha512-armv8-aarch64-ce.S
+index fa22519..3090d50 100644
+--- a/cipher/sha512-armv8-aarch64-ce.S
++++ b/cipher/sha512-armv8-aarch64-ce.S
+@@ -136,9 +136,9 @@
+  *                                  size_t num_blks, const u64 k[80])
+  */
+ .align 4
+-.globl _gcry_sha512_transform_armv8_ce
+-ELF(.type  _gcry_sha512_transform_armv8_ce,%function;)
+-_gcry_sha512_transform_armv8_ce:
++.globl FUNC_NAME(_gcry_sha512_transform_armv8_ce)
++ELF(.type  FUNC_NAME(_gcry_sha512_transform_armv8_ce),%function;)
++FUNC_NAME(_gcry_sha512_transform_armv8_ce):
+   /* input:
+    *	x0: ctx, CTX
+    *	x1: data (128*nblks bytes)
+@@ -378,6 +378,6 @@ _gcry_sha512_transform_armv8_ce:
+   mov x0, #0
+   ret_spec_stop
+   CFI_ENDPROC()
+-ELF(.size _gcry_sha512_transform_armv8_ce,.-_gcry_sha512_transform_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_sha512_transform_armv8_ce),.-FUNC_NAME(_gcry_sha512_transform_armv8_ce);)
+ 
+ #endif
+diff --git a/cipher/sm3-aarch64.S b/cipher/sm3-aarch64.S
+index 7ef6466..3aa2876 100644
+--- a/cipher/sm3-aarch64.S
++++ b/cipher/sm3-aarch64.S
+@@ -394,9 +394,9 @@ ELF(.size _gcry_sm3_aarch64_consts,.-_gcry_sm3_aarch64_consts)
+  *                              size_t nblks)
+  */
+ .align 4
+-.globl _gcry_sm3_transform_aarch64
+-ELF(.type _gcry_sm3_transform_aarch64,%function;)
+-_gcry_sm3_transform_aarch64:
++.globl FUNC_NAME(_gcry_sm3_transform_aarch64)
++ELF(.type FUNC_NAME(_gcry_sm3_transform_aarch64),%function;)
++FUNC_NAME(_gcry_sm3_transform_aarch64):
+   CFI_STARTPROC();
+ 
+   ldp ra, rb, [RSTATE, #0];
+@@ -655,6 +655,6 @@ _gcry_sm3_transform_aarch64:
+   CFI_RESTORE(x29);
+   ret_spec_stop
+   CFI_ENDPROC();
+-ELF(.size _gcry_sm3_transform_aarch64, .-_gcry_sm3_transform_aarch64;)
++ELF(.size FUNC_NAME(_gcry_sm3_transform_aarch64), .-FUNC_NAME(_gcry_sm3_transform_aarch64);)
+ 
+ #endif
+diff --git a/cipher/sm3-armv8-aarch64-ce.S b/cipher/sm3-armv8-aarch64-ce.S
+index 6b67897..13a472c 100644
+--- a/cipher/sm3-armv8-aarch64-ce.S
++++ b/cipher/sm3-armv8-aarch64-ce.S
+@@ -156,9 +156,9 @@ ELF(.size _gcry_sm3_armv8_ce_consts,.-_gcry_sm3_armv8_ce_consts)
+ .text
+ 
+ .align 4
+-.global _gcry_sm3_transform_armv8_ce
+-ELF(.type _gcry_sm3_transform_armv8_ce,%function;)
+-_gcry_sm3_transform_armv8_ce:
++.globl FUNC_NAME(_gcry_sm3_transform_armv8_ce)
++ELF(.type FUNC_NAME(_gcry_sm3_transform_armv8_ce),%function;)
++FUNC_NAME(_gcry_sm3_transform_armv8_ce):
+     /* input:
+      *   x0: CTX
+      *   x1: data
+@@ -217,6 +217,6 @@ _gcry_sm3_transform_armv8_ce:
+     CLEAR_ALL_REGS();
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm3_transform_armv8_ce, .-_gcry_sm3_transform_armv8_ce;)
++ELF(.size FUNC_NAME(_gcry_sm3_transform_armv8_ce), .-FUNC_NAME(_gcry_sm3_transform_armv8_ce);)
+ 
+ #endif
+diff --git a/cipher/sm4-aarch64.S b/cipher/sm4-aarch64.S
+index bab4b4d..bf8ddea 100644
+--- a/cipher/sm4-aarch64.S
++++ b/cipher/sm4-aarch64.S
+@@ -340,9 +340,9 @@ __sm4_crypt_blk8:
+ ELF(.size __sm4_crypt_blk8,.-__sm4_crypt_blk8;)
+ 
+ .align 4
+-.global _gcry_sm4_aarch64_crypt_blk1_8
+-ELF(.type _gcry_sm4_aarch64_crypt_blk1_8,%function;)
+-_gcry_sm4_aarch64_crypt_blk1_8:
++.globl FUNC_NAME(_gcry_sm4_aarch64_crypt_blk1_8)
++ELF(.type FUNC_NAME(_gcry_sm4_aarch64_crypt_blk1_8),%function;)
++FUNC_NAME(_gcry_sm4_aarch64_crypt_blk1_8):
+     /* input:
+      *   x0: round key array, CTX
+      *   x1: dst
+@@ -398,13 +398,13 @@ _gcry_sm4_aarch64_crypt_blk1_8:
+     CFI_RESTORE(x30);
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm4_aarch64_crypt_blk1_8,.-_gcry_sm4_aarch64_crypt_blk1_8;)
++ELF(.size FUNC_NAME(_gcry_sm4_aarch64_crypt_blk1_8),.-FUNC_NAME(_gcry_sm4_aarch64_crypt_blk1_8);)
+ 
+ 
+ .align 4
+-.global _gcry_sm4_aarch64_crypt
+-ELF(.type _gcry_sm4_aarch64_crypt,%function;)
+-_gcry_sm4_aarch64_crypt:
++.globl FUNC_NAME(_gcry_sm4_aarch64_crypt)
++ELF(.type FUNC_NAME(_gcry_sm4_aarch64_crypt),%function;)
++FUNC_NAME(_gcry_sm4_aarch64_crypt):
+     /* input:
+      *   x0: round key array, CTX
+      *   x1: dst
+@@ -441,13 +441,13 @@ _gcry_sm4_aarch64_crypt:
+     CFI_RESTORE(x30);
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm4_aarch64_crypt,.-_gcry_sm4_aarch64_crypt;)
++ELF(.size FUNC_NAME(_gcry_sm4_aarch64_crypt),.-FUNC_NAME(_gcry_sm4_aarch64_crypt);)
+ 
+ 
+ .align 4
+-.global _gcry_sm4_aarch64_cbc_dec
+-ELF(.type _gcry_sm4_aarch64_cbc_dec,%function;)
+-_gcry_sm4_aarch64_cbc_dec:
++.globl FUNC_NAME(_gcry_sm4_aarch64_cbc_dec)
++ELF(.type FUNC_NAME(_gcry_sm4_aarch64_cbc_dec),%function;)
++FUNC_NAME(_gcry_sm4_aarch64_cbc_dec):
+     /* input:
+      *   x0: round key array, CTX
+      *   x1: dst
+@@ -506,12 +506,12 @@ _gcry_sm4_aarch64_cbc_dec:
+     CFI_RESTORE(x30);
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm4_aarch64_cbc_dec,.-_gcry_sm4_aarch64_cbc_dec;)
++ELF(.size FUNC_NAME(_gcry_sm4_aarch64_cbc_dec),.-FUNC_NAME(_gcry_sm4_aarch64_cbc_dec);)
+ 
+ .align 4
+-.global _gcry_sm4_aarch64_cfb_dec
+-ELF(.type _gcry_sm4_aarch64_cfb_dec,%function;)
+-_gcry_sm4_aarch64_cfb_dec:
++.globl FUNC_NAME(_gcry_sm4_aarch64_cfb_dec)
++ELF(.type FUNC_NAME(_gcry_sm4_aarch64_cfb_dec),%function;)
++FUNC_NAME(_gcry_sm4_aarch64_cfb_dec):
+     /* input:
+      *   x0: round key array, CTX
+      *   x1: dst
+@@ -570,12 +570,12 @@ _gcry_sm4_aarch64_cfb_dec:
+     CFI_RESTORE(x30);
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm4_aarch64_cfb_dec,.-_gcry_sm4_aarch64_cfb_dec;)
++ELF(.size FUNC_NAME(_gcry_sm4_aarch64_cfb_dec),.-FUNC_NAME(_gcry_sm4_aarch64_cfb_dec);)
+ 
+ .align 4
+-.global _gcry_sm4_aarch64_ctr_enc
+-ELF(.type _gcry_sm4_aarch64_ctr_enc,%function;)
+-_gcry_sm4_aarch64_ctr_enc:
++.globl FUNC_NAME(_gcry_sm4_aarch64_ctr_enc)
++ELF(.type FUNC_NAME(_gcry_sm4_aarch64_ctr_enc),%function;)
++FUNC_NAME(_gcry_sm4_aarch64_ctr_enc):
+     /* input:
+      *   x0: round key array, CTX
+      *   x1: dst
+@@ -650,6 +650,6 @@ _gcry_sm4_aarch64_ctr_enc:
+     CFI_RESTORE(x30);
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm4_aarch64_ctr_enc,.-_gcry_sm4_aarch64_ctr_enc;)
++ELF(.size FUNC_NAME(_gcry_sm4_aarch64_ctr_enc),.-FUNC_NAME(_gcry_sm4_aarch64_ctr_enc);)
+ 
+ #endif
+diff --git a/cipher/sm4-armv8-aarch64-ce.S b/cipher/sm4-armv8-aarch64-ce.S
+index 01f3df9..bb07141 100644
+--- a/cipher/sm4-armv8-aarch64-ce.S
++++ b/cipher/sm4-armv8-aarch64-ce.S
+@@ -234,9 +234,9 @@
+ 
+ 
+ .align 4
+-.global _gcry_sm4_armv8_ce_expand_key
+-ELF(.type _gcry_sm4_armv8_ce_expand_key,%function;)
+-_gcry_sm4_armv8_ce_expand_key:
++.globl FUNC_NAME(_gcry_sm4_armv8_ce_expand_key)
++ELF(.type FUNC_NAME(_gcry_sm4_armv8_ce_expand_key),%function;)
++FUNC_NAME(_gcry_sm4_armv8_ce_expand_key):
+     /* input:
+      *   x0: 128-bit key
+      *   x1: rkey_enc
+@@ -293,7 +293,7 @@ _gcry_sm4_armv8_ce_expand_key:
+     CLEAR_ALL_REGS();
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm4_armv8_ce_expand_key,.-_gcry_sm4_armv8_ce_expand_key;)
++ELF(.size FUNC_NAME(_gcry_sm4_armv8_ce_expand_key),.-FUNC_NAME(_gcry_sm4_armv8_ce_expand_key);)
+ 
+ .align 4
+ ELF(.type sm4_armv8_ce_crypt_blk1_4,%function;)
+@@ -340,9 +340,9 @@ sm4_armv8_ce_crypt_blk1_4:
+ ELF(.size sm4_armv8_ce_crypt_blk1_4,.-sm4_armv8_ce_crypt_blk1_4;)
+ 
+ .align 4
+-.global _gcry_sm4_armv8_ce_crypt_blk1_8
+-ELF(.type _gcry_sm4_armv8_ce_crypt_blk1_8,%function;)
+-_gcry_sm4_armv8_ce_crypt_blk1_8:
++.globl FUNC_NAME(_gcry_sm4_armv8_ce_crypt_blk1_8)
++ELF(.type FUNC_NAME(_gcry_sm4_armv8_ce_crypt_blk1_8),%function;)
++FUNC_NAME(_gcry_sm4_armv8_ce_crypt_blk1_8):
+     /* input:
+      *   x0: round key array, CTX
+      *   x1: dst
+@@ -387,12 +387,12 @@ _gcry_sm4_armv8_ce_crypt_blk1_8:
+     CLEAR_ALL_REGS();
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm4_armv8_ce_crypt_blk1_8,.-_gcry_sm4_armv8_ce_crypt_blk1_8;)
++ELF(.size FUNC_NAME(_gcry_sm4_armv8_ce_crypt_blk1_8),.-FUNC_NAME(_gcry_sm4_armv8_ce_crypt_blk1_8);)
+ 
+ .align 4
+-.global _gcry_sm4_armv8_ce_crypt
+-ELF(.type _gcry_sm4_armv8_ce_crypt,%function;)
+-_gcry_sm4_armv8_ce_crypt:
++.globl FUNC_NAME(_gcry_sm4_armv8_ce_crypt)
++ELF(.type FUNC_NAME(_gcry_sm4_armv8_ce_crypt),%function;)
++FUNC_NAME(_gcry_sm4_armv8_ce_crypt):
+     /* input:
+      *   x0: round key array, CTX
+      *   x1: dst
+@@ -421,12 +421,12 @@ _gcry_sm4_armv8_ce_crypt:
+     CLEAR_ALL_REGS();
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm4_armv8_ce_crypt,.-_gcry_sm4_armv8_ce_crypt;)
++ELF(.size FUNC_NAME(_gcry_sm4_armv8_ce_crypt),.-FUNC_NAME(_gcry_sm4_armv8_ce_crypt);)
+ 
+ .align 4
+-.global _gcry_sm4_armv8_ce_cbc_dec
+-ELF(.type _gcry_sm4_armv8_ce_cbc_dec,%function;)
+-_gcry_sm4_armv8_ce_cbc_dec:
++.globl FUNC_NAME(_gcry_sm4_armv8_ce_cbc_dec)
++ELF(.type FUNC_NAME(_gcry_sm4_armv8_ce_cbc_dec),%function;)
++FUNC_NAME(_gcry_sm4_armv8_ce_cbc_dec):
+     /* input:
+      *   x0: round key array, CTX
+      *   x1: dst
+@@ -474,12 +474,12 @@ _gcry_sm4_armv8_ce_cbc_dec:
+     CLEAR_ALL_REGS();
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm4_armv8_ce_cbc_dec,.-_gcry_sm4_armv8_ce_cbc_dec;)
++ELF(.size FUNC_NAME(_gcry_sm4_armv8_ce_cbc_dec),.-FUNC_NAME(_gcry_sm4_armv8_ce_cbc_dec);)
+ 
+ .align 4
+-.global _gcry_sm4_armv8_ce_cfb_dec
+-ELF(.type _gcry_sm4_armv8_ce_cfb_dec,%function;)
+-_gcry_sm4_armv8_ce_cfb_dec:
++.globl FUNC_NAME(_gcry_sm4_armv8_ce_cfb_dec)
++ELF(.type FUNC_NAME(_gcry_sm4_armv8_ce_cfb_dec),%function;)
++FUNC_NAME(_gcry_sm4_armv8_ce_cfb_dec):
+     /* input:
+      *   x0: round key array, CTX
+      *   x1: dst
+@@ -527,12 +527,12 @@ _gcry_sm4_armv8_ce_cfb_dec:
+     CLEAR_ALL_REGS();
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm4_armv8_ce_cfb_dec,.-_gcry_sm4_armv8_ce_cfb_dec;)
++ELF(.size FUNC_NAME(_gcry_sm4_armv8_ce_cfb_dec),.-FUNC_NAME(_gcry_sm4_armv8_ce_cfb_dec);)
+ 
+ .align 4
+-.global _gcry_sm4_armv8_ce_ctr_enc
+-ELF(.type _gcry_sm4_armv8_ce_ctr_enc,%function;)
+-_gcry_sm4_armv8_ce_ctr_enc:
++.globl FUNC_NAME(_gcry_sm4_armv8_ce_ctr_enc)
++ELF(.type FUNC_NAME(_gcry_sm4_armv8_ce_ctr_enc),%function;)
++FUNC_NAME(_gcry_sm4_armv8_ce_ctr_enc):
+     /* input:
+      *   x0: round key array, CTX
+      *   x1: dst
+@@ -596,12 +596,12 @@ _gcry_sm4_armv8_ce_ctr_enc:
+     CLEAR_ALL_REGS();
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm4_armv8_ce_ctr_enc,.-_gcry_sm4_armv8_ce_ctr_enc;)
++ELF(.size FUNC_NAME(_gcry_sm4_armv8_ce_ctr_enc),.-FUNC_NAME(_gcry_sm4_armv8_ce_ctr_enc);)
+ 
+ .align 4
+-.global _gcry_sm4_armv8_ce_xts_crypt
+-ELF(.type _gcry_sm4_armv8_ce_xts_crypt,%function;)
+-_gcry_sm4_armv8_ce_xts_crypt:
++.globl FUNC_NAME(_gcry_sm4_armv8_ce_xts_crypt)
++ELF(.type FUNC_NAME(_gcry_sm4_armv8_ce_xts_crypt),%function;)
++FUNC_NAME(_gcry_sm4_armv8_ce_xts_crypt):
+     /* input:
+      *   x0: round key array, CTX
+      *   x1: dst
+@@ -723,6 +723,6 @@ _gcry_sm4_armv8_ce_xts_crypt:
+     CLEAR_ALL_REGS();
+     ret_spec_stop
+     CFI_ENDPROC()
+-ELF(.size _gcry_sm4_armv8_ce_xts_crypt,.-_gcry_sm4_armv8_ce_xts_crypt;)
++ELF(.size FUNC_NAME(_gcry_sm4_armv8_ce_xts_crypt),.-FUNC_NAME(_gcry_sm4_armv8_ce_xts_crypt);)
+ 
+ #endif
+diff --git a/cipher/sm4-armv9-aarch64-sve-ce.S b/cipher/sm4-armv9-aarch64-sve-ce.S
+index 7367cd2..fdfc7e2 100644
+--- a/cipher/sm4-armv9-aarch64-sve-ce.S
++++ b/cipher/sm4-armv9-aarch64-sve-ce.S
+@@ -353,9 +353,9 @@ ELF(.size _gcry_sm4_armv9_svesm4_consts,.-_gcry_sm4_armv9_svesm4_consts)
+ .text
+ 
+ .align 4
+-.global _gcry_sm4_armv9_sve_ce_crypt
+-ELF(.type _gcry_sm4_armv9_sve_ce_crypt,%function;)
+-_gcry_sm4_armv9_sve_ce_crypt:
++.globl FUNC_NAME(_gcry_sm4_armv9_sve_ce_crypt)
++ELF(.type FUNC_NAME(_gcry_sm4_armv9_sve_ce_crypt),%function;)
++FUNC_NAME(_gcry_sm4_armv9_sve_ce_crypt):
+     /* input:
+      *   x0: round key array, CTX
+      *   x1: dst
+@@ -446,12 +446,12 @@ _gcry_sm4_armv9_sve_ce_crypt:
+ .Lcrypt_end:
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm4_armv9_sve_ce_crypt,.-_gcry_sm4_armv9_sve_ce_crypt;)
++ELF(.size FUNC_NAME(_gcry_sm4_armv9_sve_ce_crypt),.-FUNC_NAME(_gcry_sm4_armv9_sve_ce_crypt);)
+ 
+ .align 4
+-.global _gcry_sm4_armv9_sve_ce_cbc_dec
+-ELF(.type _gcry_sm4_armv9_sve_ce_cbc_dec,%function;)
+-_gcry_sm4_armv9_sve_ce_cbc_dec:
++.globl FUNC_NAME(_gcry_sm4_armv9_sve_ce_cbc_dec)
++ELF(.type FUNC_NAME(_gcry_sm4_armv9_sve_ce_cbc_dec),%function;)
++FUNC_NAME(_gcry_sm4_armv9_sve_ce_cbc_dec):
+     /* input:
+      *   x0: round key array, CTX
+      *   x1: dst
+@@ -621,12 +621,12 @@ _gcry_sm4_armv9_sve_ce_cbc_dec:
+     CLEAR_ALL_REGS();
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm4_armv9_sve_ce_cbc_dec,.-_gcry_sm4_armv9_sve_ce_cbc_dec;)
++ELF(.size FUNC_NAME(_gcry_sm4_armv9_sve_ce_cbc_dec),.-FUNC_NAME(_gcry_sm4_armv9_sve_ce_cbc_dec);)
+ 
+ .align 4
+-.global _gcry_sm4_armv9_sve_ce_cfb_dec
+-ELF(.type _gcry_sm4_armv9_sve_ce_cfb_dec,%function;)
+-_gcry_sm4_armv9_sve_ce_cfb_dec:
++.globl FUNC_NAME(_gcry_sm4_armv9_sve_ce_cfb_dec)
++ELF(.type FUNC_NAME(_gcry_sm4_armv9_sve_ce_cfb_dec),%function;)
++FUNC_NAME(_gcry_sm4_armv9_sve_ce_cfb_dec):
+     /* input:
+      *   x0: round key array, CTX
+      *   x1: dst
+@@ -796,12 +796,12 @@ _gcry_sm4_armv9_sve_ce_cfb_dec:
+     CLEAR_ALL_REGS();
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm4_armv9_sve_ce_cfb_dec,.-_gcry_sm4_armv9_sve_ce_cfb_dec;)
++ELF(.size FUNC_NAME(_gcry_sm4_armv9_sve_ce_cfb_dec),.-FUNC_NAME(_gcry_sm4_armv9_sve_ce_cfb_dec);)
+ 
+ .align 4
+-.global _gcry_sm4_armv9_sve_ce_ctr_enc
+-ELF(.type _gcry_sm4_armv9_sve_ce_ctr_enc,%function;)
+-_gcry_sm4_armv9_sve_ce_ctr_enc:
++.globl FUNC_NAME(_gcry_sm4_armv9_sve_ce_ctr_enc)
++ELF(.type FUNC_NAME(_gcry_sm4_armv9_sve_ce_ctr_enc),%function;)
++FUNC_NAME(_gcry_sm4_armv9_sve_ce_ctr_enc):
+     /* input:
+      *   x0: round key array, CTX
+      *   x1: dst
+@@ -953,12 +953,12 @@ _gcry_sm4_armv9_sve_ce_ctr_enc:
+     CLEAR_ALL_REGS();
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm4_armv9_sve_ce_ctr_enc,.-_gcry_sm4_armv9_sve_ce_ctr_enc;)
++ELF(.size FUNC_NAME(_gcry_sm4_armv9_sve_ce_ctr_enc),.-FUNC_NAME(_gcry_sm4_armv9_sve_ce_ctr_enc);)
+ 
+ .align 4
+-.global _gcry_sm4_armv9_sve_get_vl
+-ELF(.type _gcry_sm4_armv9_sve_get_vl,%function;)
+-_gcry_sm4_armv9_sve_get_vl:
++.globl FUNC_NAME(_gcry_sm4_armv9_sve_get_vl)
++ELF(.type FUNC_NAME(_gcry_sm4_armv9_sve_get_vl),%function;)
++FUNC_NAME(_gcry_sm4_armv9_sve_get_vl):
+     CFI_STARTPROC();
+ 
+     /* VL in bytes */
+@@ -966,6 +966,6 @@ _gcry_sm4_armv9_sve_get_vl:
+ 
+     ret_spec_stop;
+     CFI_ENDPROC();
+-ELF(.size _gcry_sm4_armv9_sve_get_vl,.-_gcry_sm4_armv9_sve_get_vl;)
++ELF(.size FUNC_NAME(_gcry_sm4_armv9_sve_get_vl),.-FUNC_NAME(_gcry_sm4_armv9_sve_get_vl);)
+ 
+ #endif
+diff --git a/cipher/twofish-aarch64.S b/cipher/twofish-aarch64.S
+index b8314ad..41f4965 100644
+--- a/cipher/twofish-aarch64.S
++++ b/cipher/twofish-aarch64.S
+@@ -216,11 +216,11 @@
+ 	decrypt_round(RA, RB, RC, RD, (nc) * 2, ror1, 1); \
+ 	ror1(RD);
+ 
+-.globl _gcry_twofish_arm_encrypt_block
+-ELF(.type   _gcry_twofish_arm_encrypt_block,%function;)
++.globl FUNC_NAME(_gcry_twofish_arm_encrypt_block)
++ELF(.type   FUNC_NAME(_gcry_twofish_arm_encrypt_block),%function;)
+ 
+ .align 4
+-_gcry_twofish_arm_encrypt_block:
++FUNC_NAME(_gcry_twofish_arm_encrypt_block):
+ 	/* input:
+ 	 *	x0: ctx
+ 	 *	x1: dst
+@@ -265,13 +265,13 @@ _gcry_twofish_arm_encrypt_block:
+ 
+ 	ret_spec_stop;
+ 	CFI_ENDPROC();
+-ELF(.size _gcry_twofish_arm_encrypt_block,.-_gcry_twofish_arm_encrypt_block;)
++ELF(.size FUNC_NAME(_gcry_twofish_arm_encrypt_block),.-FUNC_NAME(_gcry_twofish_arm_encrypt_block);)
+ 
+-.globl _gcry_twofish_arm_decrypt_block
+-ELF(.type   _gcry_twofish_arm_decrypt_block,%function;)
++.globl FUNC_NAME(_gcry_twofish_arm_decrypt_block)
++ELF(.type   FUNC_NAME(_gcry_twofish_arm_decrypt_block),%function;)
+ 
+ .align 4
+-_gcry_twofish_arm_decrypt_block:
++FUNC_NAME(_gcry_twofish_arm_decrypt_block):
+ 	/* input:
+ 	 *	%r0: ctx
+ 	 *	%r1: dst
+@@ -316,7 +316,7 @@ _gcry_twofish_arm_decrypt_block:
+ 
+ 	ret_spec_stop;
+ 	CFI_ENDPROC();
+-ELF(.size _gcry_twofish_arm_decrypt_block,.-_gcry_twofish_arm_decrypt_block;)
++ELF(.size FUNC_NAME(_gcry_twofish_arm_decrypt_block),.-FUNC_NAME(_gcry_twofish_arm_decrypt_block);)
+ 
+ #endif /*HAVE_COMPATIBLE_GCC_AARCH64_PLATFORM_AS*/
+ #endif /*__AARCH64EL__*/
+-- 
+2.50.1 (Apple Git-155)
+

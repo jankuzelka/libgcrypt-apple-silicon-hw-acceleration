@@ -1,0 +1,253 @@
+From 45f22d7531ac9aaee7c6ae4aae848394a40f1875 Mon Sep 17 00:00:00 2001
+From: Jan Kuzelka <jan@kuzelka.dev>
+Date: Fri, 17 Apr 2026 11:43:38 +0200
+Subject: [PATCH 2/5] aarch64: make assembly macros Mach-O compatible on macOS
+
+- Use .const instead of .rodata
+- Replace label addressing with @PAGE/@PAGEOFF via GET_DATA_POINTER
+- Convert shared macros to .macro form (no ';' separators)
+- Disable incompatible CFI directives on __APPLE__
+
+No impact on ELF platforms.
+---
+ cipher/asm-common-aarch64.h | 146 ++++++++++++++++++++++++++++++++----
+ 1 file changed, 130 insertions(+), 16 deletions(-)
+
+diff --git a/cipher/asm-common-aarch64.h b/cipher/asm-common-aarch64.h
+index dde7366..7ede73a 100644
+--- a/cipher/asm-common-aarch64.h
++++ b/cipher/asm-common-aarch64.h
+@@ -31,20 +31,44 @@
+ 
+ #ifdef _WIN32
+ # define SECTION_RODATA .section .rdata
++#elif defined(__APPLE__)
++# define SECTION_RODATA .const
+ #else
+ # define SECTION_RODATA .section .rodata
+ #endif
+ 
+ #ifdef __APPLE__
+-#define GET_DATA_POINTER(reg, name) \
+-	adrp    reg, name@GOTPAGE ; \
+-	add     reg, reg, name@GOTPAGEOFF ;
++/* On macOS, ';' is a comment character in AArch64 assembly (not a statement
++ * separator as on GAS/ELF).  Multi-instruction CPP macros silently lose all
++ * instructions after the first ';'.  Work around this by defining the real
++ * logic as an assembly .macro (which naturally handles multiple lines), then
++ * wrapping it in a CPP #define to preserve the existing call-site syntax
++ * GET_DATA_POINTER(reg, name).
++ *
++ * Uses @PAGE/@PAGEOFF (direct page-relative addressing) because all current
++ * callers reference local labels or same-TU non-exported symbols — none
++ * require GOT indirection. */
++.macro _gcry_get_data_pointer reg, name
++	adrp    \reg, \name@PAGE
++	add     \reg, \reg, \name@PAGEOFF
++.endm
++#define GET_DATA_POINTER(reg, name) _gcry_get_data_pointer reg, name
+ #else
+ #define GET_DATA_POINTER(reg, name) \
+ 	adrp    reg, name ; \
+ 	add     reg, reg, #:lo12:name ;
+ #endif
+ 
++/* Mach-O prefixes C symbols with underscore; ELF does not.  Assembly labels
++ * for functions called from C must match the linker's expectation.  On macOS,
++ * C symbol _gcry_foo is referenced as __gcry_foo, so asm must use that name.
++ * On ELF this is the identity transformation. */
++#ifdef __APPLE__
++#define FUNC_NAME(name) _ ## name
++#else
++#define FUNC_NAME(name) name
++#endif
++
+ #if defined(__ARM_FEATURE_BTI_DEFAULT) && __ARM_FEATURE_BTI_DEFAULT == 1
+ # define AARCH64_BTI_PROPERTY_FLAG (1 << 0)
+ # define AARCH64_HINT_BTI_C \
+@@ -63,30 +87,52 @@
+ 
+ #ifdef HAVE_GCC_ASM_CFI_DIRECTIVES
+ /* CFI directives to emit DWARF stack unwinding information. */
+-# define CFI_STARTPROC()            .cfi_startproc; AARCH64_HINT_BTI_C
++# ifdef __APPLE__
++.macro _gcry_cfi_startproc
++	.cfi_startproc
++	AARCH64_HINT_BTI_C
++.endm
++#  define CFI_STARTPROC() _gcry_cfi_startproc
++# else
++#  define CFI_STARTPROC()            .cfi_startproc; AARCH64_HINT_BTI_C
++# endif
+ # define CFI_ENDPROC()              .cfi_endproc
+-# define CFI_REMEMBER_STATE()       .cfi_remember_state
+-# define CFI_RESTORE_STATE()        .cfi_restore_state
+-# define CFI_ADJUST_CFA_OFFSET(off) .cfi_adjust_cfa_offset off
+-# define CFI_REL_OFFSET(reg,off)    .cfi_rel_offset reg, off
+-# define CFI_DEF_CFA_REGISTER(reg)  .cfi_def_cfa_register reg
+-# define CFI_REGISTER(ro,rn)        .cfi_register ro, rn
+-# define CFI_RESTORE(reg)           .cfi_restore reg
++# ifdef __APPLE__
++/* Apple Clang rejects .cfi_adjust_cfa_offset in large functions with
++ * "invalid CFI advance_loc expression".  Suppress CFA-tracking CFI on
++ * macOS; .cfi_startproc/.cfi_endproc are kept for basic frame info. */
++#  define CFI_REMEMBER_STATE()
++#  define CFI_RESTORE_STATE()
++#  define CFI_ADJUST_CFA_OFFSET(off)
++#  define CFI_REL_OFFSET(reg,off)
++#  define CFI_DEF_CFA_REGISTER(reg)
++#  define CFI_REGISTER(ro,rn)
++#  define CFI_RESTORE(reg)
++#  define CFI_CFA_ON_STACK(rsp_offs,cfa_depth)
++#  define CFI_REG_ON_STACK(reg,rsp_offs)
++# else
++#  define CFI_REMEMBER_STATE()       .cfi_remember_state
++#  define CFI_RESTORE_STATE()        .cfi_restore_state
++#  define CFI_ADJUST_CFA_OFFSET(off) .cfi_adjust_cfa_offset off
++#  define CFI_REL_OFFSET(reg,off)    .cfi_rel_offset reg, off
++#  define CFI_DEF_CFA_REGISTER(reg)  .cfi_def_cfa_register reg
++#  define CFI_REGISTER(ro,rn)        .cfi_register ro, rn
++#  define CFI_RESTORE(reg)           .cfi_restore reg
+ 
+ /* CFA expressions are used for pointing CFA and registers to
+  * SP relative offsets. */
+-# define DW_REGNO_SP 31
++#  define DW_REGNO_SP 31
+ 
+ /* Fixed length encoding used for integers for now. */
+-# define DW_SLEB128_7BIT(value) \
++#  define DW_SLEB128_7BIT(value) \
+ 	0x00|((value) & 0x7f)
+-# define DW_SLEB128_28BIT(value) \
++#  define DW_SLEB128_28BIT(value) \
+ 	0x80|((value)&0x7f), \
+ 	0x80|(((value)>>7)&0x7f), \
+ 	0x80|(((value)>>14)&0x7f), \
+ 	0x00|(((value)>>21)&0x7f)
+ 
+-# define CFI_CFA_ON_STACK(rsp_offs,cfa_depth) \
++#  define CFI_CFA_ON_STACK(rsp_offs,cfa_depth) \
+ 	.cfi_escape \
+ 	  0x0f, /* DW_CFA_def_cfa_expression */ \
+ 	    DW_SLEB128_7BIT(11), /* length */ \
+@@ -96,13 +142,14 @@
+ 	  0x23, /* DW_OP_plus_constu */ \
+ 	    DW_SLEB128_28BIT((cfa_depth)+8)
+ 
+-# define CFI_REG_ON_STACK(regno,rsp_offs) \
++#  define CFI_REG_ON_STACK(regno,rsp_offs) \
+ 	.cfi_escape \
+ 	  0x10, /* DW_CFA_expression */ \
+ 	    DW_SLEB128_7BIT(regno), \
+ 	    DW_SLEB128_7BIT(5), /* length */ \
+ 	  0x8f, /* DW_OP_breg31, rsp + constant */ \
+ 	    DW_SLEB128_28BIT(rsp_offs)
++# endif
+ 
+ #else
+ # define CFI_STARTPROC() AARCH64_HINT_BTI_C
+@@ -120,11 +167,49 @@
+ #endif
+ 
+ /* 'ret' instruction replacement for straight-line speculation mitigation */
++#ifdef __APPLE__
++.macro _gcry_ret_spec_stop
++	ret
++	dsb sy
++	isb
++.endm
++#define ret_spec_stop _gcry_ret_spec_stop
++#else
+ #define ret_spec_stop \
+ 	ret; dsb sy; isb;
++#endif
+ 
+ #define CLEAR_REG(reg) movi reg.16b, #0;
+ 
++#ifdef __APPLE__
++.macro _gcry_clear_all_regs
++	CLEAR_REG(v0)
++	CLEAR_REG(v1)
++	CLEAR_REG(v2)
++	CLEAR_REG(v3)
++	CLEAR_REG(v4)
++	CLEAR_REG(v5)
++	CLEAR_REG(v6)
++	/* v8-v15 are ABI callee saved. */
++	CLEAR_REG(v16)
++	CLEAR_REG(v17)
++	CLEAR_REG(v18)
++	CLEAR_REG(v19)
++	CLEAR_REG(v20)
++	CLEAR_REG(v21)
++	CLEAR_REG(v22)
++	CLEAR_REG(v23)
++	CLEAR_REG(v24)
++	CLEAR_REG(v25)
++	CLEAR_REG(v26)
++	CLEAR_REG(v27)
++	CLEAR_REG(v28)
++	CLEAR_REG(v29)
++	CLEAR_REG(v30)
++	CLEAR_REG(v31)
++.endm
++#define CLEAR_ALL_REGS() _gcry_clear_all_regs
++#else
+ #define CLEAR_ALL_REGS() \
+ 	CLEAR_REG(v0); CLEAR_REG(v1); CLEAR_REG(v2); CLEAR_REG(v3); \
+ 	CLEAR_REG(v4); CLEAR_REG(v5); CLEAR_REG(v6); \
+@@ -133,7 +218,21 @@
+ 	CLEAR_REG(v20); CLEAR_REG(v21); CLEAR_REG(v22); CLEAR_REG(v23); \
+ 	CLEAR_REG(v24); CLEAR_REG(v25); CLEAR_REG(v26); CLEAR_REG(v27); \
+ 	CLEAR_REG(v28); CLEAR_REG(v29); CLEAR_REG(v30); CLEAR_REG(v31);
++#endif
+ 
++#ifdef __APPLE__
++.macro _gcry_vpush_abi
++	stp d8, d9, [sp, #-16]!
++	CFI_ADJUST_CFA_OFFSET(16)
++	stp d10, d11, [sp, #-16]!
++	CFI_ADJUST_CFA_OFFSET(16)
++	stp d12, d13, [sp, #-16]!
++	CFI_ADJUST_CFA_OFFSET(16)
++	stp d14, d15, [sp, #-16]!
++	CFI_ADJUST_CFA_OFFSET(16)
++.endm
++#define VPUSH_ABI _gcry_vpush_abi
++#else
+ #define VPUSH_ABI \
+ 	stp d8, d9, [sp, #-16]!; \
+ 	CFI_ADJUST_CFA_OFFSET(16); \
+@@ -143,7 +242,21 @@
+ 	CFI_ADJUST_CFA_OFFSET(16); \
+ 	stp d14, d15, [sp, #-16]!; \
+ 	CFI_ADJUST_CFA_OFFSET(16);
++#endif
+ 
++#ifdef __APPLE__
++.macro _gcry_vpop_abi
++	ldp d14, d15, [sp], #16
++	CFI_ADJUST_CFA_OFFSET(-16)
++	ldp d12, d13, [sp], #16
++	CFI_ADJUST_CFA_OFFSET(-16)
++	ldp d10, d11, [sp], #16
++	CFI_ADJUST_CFA_OFFSET(-16)
++	ldp d8, d9, [sp], #16
++	CFI_ADJUST_CFA_OFFSET(-16)
++.endm
++#define VPOP_ABI _gcry_vpop_abi
++#else
+ #define VPOP_ABI \
+ 	ldp d14, d15, [sp], #16; \
+ 	CFI_ADJUST_CFA_OFFSET(-16); \
+@@ -153,6 +266,7 @@
+ 	CFI_ADJUST_CFA_OFFSET(-16); \
+ 	ldp d8, d9, [sp], #16; \
+ 	CFI_ADJUST_CFA_OFFSET(-16);
++#endif
+ 
+ #if (AARCH64_BTI_PROPERTY_FLAG | AARCH64_PAC_PROPERTY_FLAG)
+ /* Generate PAC/BTI property for all assembly files including this header.
+-- 
+2.50.1 (Apple Git-155)
+

@@ -1,0 +1,149 @@
+From 8d8d91bfdd05c1f3930130737a924833dcc77586 Mon Sep 17 00:00:00 2001
+From: Jan Kuzelka <jan@kuzelka.dev>
+Date: Fri, 17 Apr 2026 11:44:11 +0200
+Subject: [PATCH 5/5] aarch64: fix Mach-O relocation in CRC implementation
+
+Replace label-difference immediates with GET_DATA_POINTER on macOS,
+as Mach-O does not support such expressions in ADD instructions.
+---
+ cipher/crc-armv8-aarch64-ce.S | 51 ++++++++++++++++++++++++-----------
+ 1 file changed, 35 insertions(+), 16 deletions(-)
+
+diff --git a/cipher/crc-armv8-aarch64-ce.S b/cipher/crc-armv8-aarch64-ce.S
+index 2d8d216..200d4ad 100644
+--- a/cipher/crc-armv8-aarch64-ce.S
++++ b/cipher/crc-armv8-aarch64-ce.S
+@@ -63,9 +63,9 @@ _crc32_aarch64_ce_constants:
+  *                                  const struct crc32_consts_s *consts);
+  */
+ .align 4
+-.globl _gcry_crc32r_armv8_ce_bulk
+-ELF(.type  _gcry_crc32r_armv8_ce_bulk,%function;)
+-_gcry_crc32r_armv8_ce_bulk:
++.globl FUNC_NAME(_gcry_crc32r_armv8_ce_bulk)
++ELF(.type  FUNC_NAME(_gcry_crc32r_armv8_ce_bulk),%function;)
++FUNC_NAME(_gcry_crc32r_armv8_ce_bulk):
+   /* input:
+    *    x0: pcrc
+    *    x1: inbuf
+@@ -172,9 +172,16 @@ _gcry_crc32r_armv8_ce_bulk:
+ 
+   /* Partial fold. */
+ 
++#ifdef __APPLE__
++  GET_DATA_POINTER(x4, .Lcrc32_refl_shuf_shift)
++  GET_DATA_POINTER(x5, .Lcrc32_refl_shuf_shift)
++  add x5, x5, #16
++  GET_DATA_POINTER(x6, .Lcrc32_partial_fold_input_mask)
++#else
+   add x4, x7, #.Lcrc32_refl_shuf_shift - .Lcrc32_constants
+   add x5, x7, #.Lcrc32_refl_shuf_shift - .Lcrc32_constants + 16
+   add x6, x7, #.Lcrc32_partial_fold_input_mask - .Lcrc32_constants
++#endif
+   sub x8, x2, #16
+   add x4, x4, x2
+   add x5, x5, x2
+@@ -232,16 +239,16 @@ _gcry_crc32r_armv8_ce_bulk:
+ 
+   ret_spec_stop
+   CFI_ENDPROC()
+-ELF(.size _gcry_crc32r_armv8_ce_bulk,.-_gcry_crc32r_armv8_ce_bulk;)
++ELF(.size FUNC_NAME(_gcry_crc32r_armv8_ce_bulk),.-FUNC_NAME(_gcry_crc32r_armv8_ce_bulk);)
+ 
+ /*
+  * void _gcry_crc32r_armv8_ce_reduction_4 (u32 *pcrc, u32 data, u32 crc,
+  *                                         const struct crc32_consts_s *consts);
+  */
+ .align 4
+-.globl _gcry_crc32r_armv8_ce_reduction_4
+-ELF(.type  _gcry_crc32r_armv8_ce_reduction_4,%function;)
+-_gcry_crc32r_armv8_ce_reduction_4:
++.globl FUNC_NAME(_gcry_crc32r_armv8_ce_reduction_4)
++ELF(.type  FUNC_NAME(_gcry_crc32r_armv8_ce_reduction_4),%function;)
++FUNC_NAME(_gcry_crc32r_armv8_ce_reduction_4):
+   /* input:
+    *    w0: data
+    *    w1: crc
+@@ -265,16 +272,16 @@ _gcry_crc32r_armv8_ce_reduction_4:
+ 
+   ret_spec_stop
+   CFI_ENDPROC()
+-ELF(.size _gcry_crc32r_armv8_ce_reduction_4,.-_gcry_crc32r_armv8_ce_reduction_4;)
++ELF(.size FUNC_NAME(_gcry_crc32r_armv8_ce_reduction_4),.-FUNC_NAME(_gcry_crc32r_armv8_ce_reduction_4);)
+ 
+ /*
+  * void _gcry_crc32_armv8_ce_bulk (u32 *pcrc, const byte *inbuf, size_t inlen,
+  *                                 const struct crc32_consts_s *consts);
+  */
+ .align 4
+-.globl _gcry_crc32_armv8_ce_bulk
+-ELF(.type  _gcry_crc32_armv8_ce_bulk,%function;)
+-_gcry_crc32_armv8_ce_bulk:
++.globl FUNC_NAME(_gcry_crc32_armv8_ce_bulk)
++ELF(.type  FUNC_NAME(_gcry_crc32_armv8_ce_bulk),%function;)
++FUNC_NAME(_gcry_crc32_armv8_ce_bulk):
+   /* input:
+    *    x0: pcrc
+    *    x1: inbuf
+@@ -284,7 +291,11 @@ _gcry_crc32_armv8_ce_bulk:
+   CFI_STARTPROC()
+ 
+   GET_DATA_POINTER(x7, .Lcrc32_constants)
++#ifdef __APPLE__
++  GET_DATA_POINTER(x4, .Lcrc32_bswap_shuf)
++#else
+   add x4, x7, #.Lcrc32_bswap_shuf - .Lcrc32_constants
++#endif
+   cmp x2, #128
+   ld1 {v7.16b}, [x4]
+ 
+@@ -397,9 +408,17 @@ _gcry_crc32_armv8_ce_bulk:
+ 
+   /* Partial fold. */
+ 
++#ifdef __APPLE__
++  GET_DATA_POINTER(x4, .Lcrc32_refl_shuf_shift)
++  add x4, x4, #32
++  GET_DATA_POINTER(x5, .Lcrc32_shuf_shift)
++  add x5, x5, #16
++  GET_DATA_POINTER(x6, .Lcrc32_partial_fold_input_mask)
++#else
+   add x4, x7, #.Lcrc32_refl_shuf_shift - .Lcrc32_constants + 32
+   add x5, x7, #.Lcrc32_shuf_shift - .Lcrc32_constants + 16
+   add x6, x7, #.Lcrc32_partial_fold_input_mask - .Lcrc32_constants
++#endif
+   sub x8, x2, #16
+   sub x4, x4, x2
+   add x5, x5, x2
+@@ -462,16 +481,16 @@ _gcry_crc32_armv8_ce_bulk:
+ 
+   ret_spec_stop
+   CFI_ENDPROC()
+-ELF(.size _gcry_crc32_armv8_ce_bulk,.-_gcry_crc32_armv8_ce_bulk;)
++ELF(.size FUNC_NAME(_gcry_crc32_armv8_ce_bulk),.-FUNC_NAME(_gcry_crc32_armv8_ce_bulk);)
+ 
+ /*
+  * void _gcry_crc32_armv8_ce_reduction_4 (u32 *pcrc, u32 data, u32 crc,
+  *                                        const struct crc32_consts_s *consts);
+  */
+ .align 4
+-.globl _gcry_crc32_armv8_ce_reduction_4
+-ELF(.type  _gcry_crc32_armv8_ce_reduction_4,%function;)
+-_gcry_crc32_armv8_ce_reduction_4:
++.globl FUNC_NAME(_gcry_crc32_armv8_ce_reduction_4)
++ELF(.type  FUNC_NAME(_gcry_crc32_armv8_ce_reduction_4),%function;)
++FUNC_NAME(_gcry_crc32_armv8_ce_reduction_4):
+   /* input:
+    *    w0: data
+    *    w1: crc
+@@ -495,6 +514,6 @@ _gcry_crc32_armv8_ce_reduction_4:
+ 
+   ret_spec_stop
+   CFI_ENDPROC()
+-ELF(.size _gcry_crc32_armv8_ce_reduction_4,.-_gcry_crc32_armv8_ce_reduction_4;)
++ELF(.size FUNC_NAME(_gcry_crc32_armv8_ce_reduction_4),.-FUNC_NAME(_gcry_crc32_armv8_ce_reduction_4);)
+ 
+ #endif
+-- 
+2.50.1 (Apple Git-155)
+

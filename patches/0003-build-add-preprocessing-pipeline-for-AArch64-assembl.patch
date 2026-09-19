@@ -1,0 +1,135 @@
+From d80a5fb113eb74cbdd614c8b861c8a3c1ccb0c7a Mon Sep 17 00:00:00 2001
+From: Jan Kuzelka <jan@kuzelka.dev>
+Date: Fri, 17 Apr 2026 11:43:46 +0200
+Subject: [PATCH 3/5] build: add preprocessing pipeline for AArch64 assembly on
+ macOS
+
+Introduce CPP -> awk -> assembler pipeline to split ';'-separated
+instructions, which are treated as comments by Apple's assembler.
+
+Applied only on Darwin, no impact on other platforms.
+---
+ cipher/Makefile.am | 107 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 107 insertions(+)
+
+diff --git a/cipher/Makefile.am b/cipher/Makefile.am
+index 11bb19d..23e99bc 100644
+--- a/cipher/Makefile.am
++++ b/cipher/Makefile.am
+@@ -346,6 +346,113 @@ rijndael-vp-aarch64.o: $(srcdir)/rijndael-vp-aarch64.c Makefile
+ rijndael-vp-aarch64.lo: $(srcdir)/rijndael-vp-aarch64.c Makefile
+ 	`echo $(LTCOMPILE) $(aarch64_simd_cflags) -c $< | $(instrumentation_munging) `
+ 
++# On macOS/AArch64, the Clang assembler treats ';' as a comment character
++# (ARM convention) rather than a statement separator (GAS convention).
++# File-local CPP macros that use '; \' to separate instructions silently
++# lose all instructions after the first ';'.  Work around this by
++# preprocessing with CPP first, then piping through awk to replace ';'
++# with newlines, then assembling the result.  On non-Darwin hosts the
++# awk is replaced with cat so the pipeline is a no-op.
++AARCH64_ASM_CPPFLAGS = $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
++	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CCASFLAGS) $(CCASFLAGS)
++
++# Helper: preprocess .S → fix semicolons → assemble.
++# Usage: $(call aarch64_asm_compile,source.S,output.o)
++# For .lo targets the recipe must go through libtool for the -c step.
++define aarch64_compile_S_to_o
++	$(CCAS) $(AARCH64_ASM_CPPFLAGS) -E $(1) \
++	  | case "$(host_os)" in darwin*) awk '{gsub(/;[[:space:]]*/,"\n");print}';; *) cat;; esac \
++	  > $(*F)-aarch64-tmp.s
++	$(CCAS) $(AARCH64_ASM_CPPFLAGS) -c $(*F)-aarch64-tmp.s -o $(2)
++	-rm -f $(*F)-aarch64-tmp.s
++endef
++define aarch64_compile_S_to_lo
++	$(CCAS) $(AARCH64_ASM_CPPFLAGS) -E $(1) \
++	  | case "$(host_os)" in darwin*) awk '{gsub(/;[[:space:]]*/,"\n");print}';; *) cat;; esac \
++	  > $(*F)-aarch64-tmp.s
++	$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
++	  --mode=compile $(CCAS) $(AARCH64_ASM_CPPFLAGS) -c $(*F)-aarch64-tmp.s -o $(2)
++	-rm -f $(*F)-aarch64-tmp.s
++endef
++
++chacha20-aarch64.o: $(srcdir)/chacha20-aarch64.S Makefile
++	$(call aarch64_compile_S_to_o,$(srcdir)/chacha20-aarch64.S,$@)
++chacha20-aarch64.lo: $(srcdir)/chacha20-aarch64.S Makefile
++	$(call aarch64_compile_S_to_lo,$(srcdir)/chacha20-aarch64.S,$@)
++
++rijndael-aarch64.o: $(srcdir)/rijndael-aarch64.S Makefile
++	$(call aarch64_compile_S_to_o,$(srcdir)/rijndael-aarch64.S,$@)
++rijndael-aarch64.lo: $(srcdir)/rijndael-aarch64.S Makefile
++	$(call aarch64_compile_S_to_lo,$(srcdir)/rijndael-aarch64.S,$@)
++
++rijndael-armv8-aarch64-ce.o: $(srcdir)/rijndael-armv8-aarch64-ce.S Makefile
++	$(call aarch64_compile_S_to_o,$(srcdir)/rijndael-armv8-aarch64-ce.S,$@)
++rijndael-armv8-aarch64-ce.lo: $(srcdir)/rijndael-armv8-aarch64-ce.S Makefile
++	$(call aarch64_compile_S_to_lo,$(srcdir)/rijndael-armv8-aarch64-ce.S,$@)
++
++sha1-armv8-aarch64-ce.o: $(srcdir)/sha1-armv8-aarch64-ce.S Makefile
++	$(call aarch64_compile_S_to_o,$(srcdir)/sha1-armv8-aarch64-ce.S,$@)
++sha1-armv8-aarch64-ce.lo: $(srcdir)/sha1-armv8-aarch64-ce.S Makefile
++	$(call aarch64_compile_S_to_lo,$(srcdir)/sha1-armv8-aarch64-ce.S,$@)
++
++sha256-armv8-aarch64-ce.o: $(srcdir)/sha256-armv8-aarch64-ce.S Makefile
++	$(call aarch64_compile_S_to_o,$(srcdir)/sha256-armv8-aarch64-ce.S,$@)
++sha256-armv8-aarch64-ce.lo: $(srcdir)/sha256-armv8-aarch64-ce.S Makefile
++	$(call aarch64_compile_S_to_lo,$(srcdir)/sha256-armv8-aarch64-ce.S,$@)
++
++sha512-armv8-aarch64-ce.o: $(srcdir)/sha512-armv8-aarch64-ce.S Makefile
++	$(call aarch64_compile_S_to_o,$(srcdir)/sha512-armv8-aarch64-ce.S,$@)
++sha512-armv8-aarch64-ce.lo: $(srcdir)/sha512-armv8-aarch64-ce.S Makefile
++	$(call aarch64_compile_S_to_lo,$(srcdir)/sha512-armv8-aarch64-ce.S,$@)
++
++cipher-gcm-armv8-aarch64-ce.o: $(srcdir)/cipher-gcm-armv8-aarch64-ce.S Makefile
++	$(call aarch64_compile_S_to_o,$(srcdir)/cipher-gcm-armv8-aarch64-ce.S,$@)
++cipher-gcm-armv8-aarch64-ce.lo: $(srcdir)/cipher-gcm-armv8-aarch64-ce.S Makefile
++	$(call aarch64_compile_S_to_lo,$(srcdir)/cipher-gcm-armv8-aarch64-ce.S,$@)
++
++# crc-armv8-aarch64-ce.S uses label-difference add immediates that Mach-O
++# does not support (Step G).  On Darwin, produce an empty object so the
++# build can proceed; CRC will fall back to the generic C implementation.
++crc-armv8-aarch64-ce.o: $(srcdir)/crc-armv8-aarch64-ce.S Makefile
++	$(call aarch64_compile_S_to_o,$(srcdir)/crc-armv8-aarch64-ce.S,$@)
++crc-armv8-aarch64-ce.lo: $(srcdir)/crc-armv8-aarch64-ce.S Makefile
++	$(call aarch64_compile_S_to_lo,$(srcdir)/crc-armv8-aarch64-ce.S,$@)
++
++camellia-aarch64.o: $(srcdir)/camellia-aarch64.S Makefile
++	$(call aarch64_compile_S_to_o,$(srcdir)/camellia-aarch64.S,$@)
++camellia-aarch64.lo: $(srcdir)/camellia-aarch64.S Makefile
++	$(call aarch64_compile_S_to_lo,$(srcdir)/camellia-aarch64.S,$@)
++
++twofish-aarch64.o: $(srcdir)/twofish-aarch64.S Makefile
++	$(call aarch64_compile_S_to_o,$(srcdir)/twofish-aarch64.S,$@)
++twofish-aarch64.lo: $(srcdir)/twofish-aarch64.S Makefile
++	$(call aarch64_compile_S_to_lo,$(srcdir)/twofish-aarch64.S,$@)
++
++sm3-aarch64.o: $(srcdir)/sm3-aarch64.S Makefile
++	$(call aarch64_compile_S_to_o,$(srcdir)/sm3-aarch64.S,$@)
++sm3-aarch64.lo: $(srcdir)/sm3-aarch64.S Makefile
++	$(call aarch64_compile_S_to_lo,$(srcdir)/sm3-aarch64.S,$@)
++
++sm3-armv8-aarch64-ce.o: $(srcdir)/sm3-armv8-aarch64-ce.S Makefile
++	$(call aarch64_compile_S_to_o,$(srcdir)/sm3-armv8-aarch64-ce.S,$@)
++sm3-armv8-aarch64-ce.lo: $(srcdir)/sm3-armv8-aarch64-ce.S Makefile
++	$(call aarch64_compile_S_to_lo,$(srcdir)/sm3-armv8-aarch64-ce.S,$@)
++
++sm4-aarch64.o: $(srcdir)/sm4-aarch64.S Makefile
++	$(call aarch64_compile_S_to_o,$(srcdir)/sm4-aarch64.S,$@)
++sm4-aarch64.lo: $(srcdir)/sm4-aarch64.S Makefile
++	$(call aarch64_compile_S_to_lo,$(srcdir)/sm4-aarch64.S,$@)
++
++sm4-armv8-aarch64-ce.o: $(srcdir)/sm4-armv8-aarch64-ce.S Makefile
++	$(call aarch64_compile_S_to_o,$(srcdir)/sm4-armv8-aarch64-ce.S,$@)
++sm4-armv8-aarch64-ce.lo: $(srcdir)/sm4-armv8-aarch64-ce.S Makefile
++	$(call aarch64_compile_S_to_lo,$(srcdir)/sm4-armv8-aarch64-ce.S,$@)
++
++sm4-armv9-aarch64-sve-ce.o: $(srcdir)/sm4-armv9-aarch64-sve-ce.S Makefile
++	$(call aarch64_compile_S_to_o,$(srcdir)/sm4-armv9-aarch64-sve-ce.S,$@)
++sm4-armv9-aarch64-sve-ce.lo: $(srcdir)/sm4-armv9-aarch64-sve-ce.S Makefile
++	$(call aarch64_compile_S_to_lo,$(srcdir)/sm4-armv9-aarch64-sve-ce.S,$@)
++
+ if ENABLE_X86_AVX512_INTRINSICS_EXTRA_CFLAGS
+ avx512f_cflags = -mavx512f
+ else
+-- 
+2.50.1 (Apple Git-155)
+

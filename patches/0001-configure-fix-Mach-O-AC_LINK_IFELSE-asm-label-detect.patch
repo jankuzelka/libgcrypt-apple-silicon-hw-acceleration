@@ -1,0 +1,122 @@
+From 2d226c34aa861e4765f70c24a603d4fe865e4bdd Mon Sep 17 00:00:00 2001
+From: Jan Kuzelka <jan@kuzelka.dev>
+Date: Fri, 17 Apr 2026 11:43:30 +0200
+Subject: [PATCH 1/5] configure: fix Mach-O AC_LINK_IFELSE asm label detection
+ on macOS
+
+Add '_' prefix for asm symbols on __APPLE__ to ensure correct linking
+during feature detection.
+
+Fixes AArch64 crypto feature probing on macOS.
+---
+ configure.ac | 59 ++++++++++++++++++++++++++++++++--------------------
+ 1 file changed, 36 insertions(+), 23 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 46c3995..d8760d2 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1243,9 +1243,12 @@ AC_CACHE_CHECK([whether GCC assembler is compatible for ARMv8/Aarch64 assembly i
+         else
+           gcry_cv_gcc_aarch64_platform_as_ok=no
+           AC_LINK_IFELSE([AC_LANG_PROGRAM(
+-            [[__asm__(
+-                ".text\n\t"
+-                "asmfunc:\n\t"
++            [[
++#ifdef __APPLE__
++              __asm__(".text\n\t" "_asmfunc:\n\t"
++#else
++              __asm__(".text\n\t" "asmfunc:\n\t"
++#endif
+                 "eor x0, x0, x30, ror #12;\n\t"
+                 "add x0, x0, x30, asr #12;\n\t"
+                 "eor v0.16b, v0.16b, v31.16b;\n\t"
+@@ -2089,10 +2092,12 @@ AC_CACHE_CHECK([whether GCC inline assembler supports AArch64 NEON instructions]
+         else
+           gcry_cv_gcc_inline_asm_aarch64_neon=no
+           AC_LINK_IFELSE([AC_LANG_PROGRAM(
+-          [[__asm__(
+-                ".cpu generic+simd\n\t"
+-                ".text\n\t"
+-                "testfn:\n\t"
++          [[
++#ifdef __APPLE__
++            __asm__(".cpu generic+simd\n\t" ".text\n\t" "_testfn:\n\t"
++#else
++            __asm__(".cpu generic+simd\n\t" ".text\n\t" "testfn:\n\t"
++#endif
+                 "mov w0, \#42;\n\t"
+                 "dup v0.8b, w0;\n\t"
+                 "ld4 {v0.8b,v1.8b,v2.8b,v3.8b},[x0],\#32;\n\t"
+@@ -2118,10 +2123,12 @@ AC_CACHE_CHECK([whether GCC inline assembler supports AArch64 Crypto Extension i
+         else
+           gcry_cv_gcc_inline_asm_aarch64_crypto=no
+           AC_LINK_IFELSE([AC_LANG_PROGRAM(
+-          [[__asm__(
+-                ".cpu generic+simd+crypto\n\t"
+-                ".text\n\t"
+-                "testfn:\n\t"
++          [[
++#ifdef __APPLE__
++            __asm__(".cpu generic+simd+crypto\n\t" ".text\n\t" "_testfn:\n\t"
++#else
++            __asm__(".cpu generic+simd+crypto\n\t" ".text\n\t" "testfn:\n\t"
++#endif
+                 "mov w0, \#42;\n\t"
+                 "dup v0.8b, w0;\n\t"
+                 "ld4 {v0.8b,v1.8b,v2.8b,v3.8b},[x0],\#32;\n\t"
+@@ -2167,10 +2174,12 @@ AC_CACHE_CHECK([whether GCC inline assembler supports AArch64 SVE instructions],
+         else
+           gcry_cv_gcc_inline_asm_aarch64_sve=no
+           AC_LINK_IFELSE([AC_LANG_PROGRAM(
+-          [[__asm__(
+-                ".cpu generic+simd+sve\n\t"
+-                ".text\n\t"
+-                "testfn:\n\t"
++          [[
++#ifdef __APPLE__
++            __asm__(".cpu generic+simd+sve\n\t" ".text\n\t" "_testfn:\n\t"
++#else
++            __asm__(".cpu generic+simd+sve\n\t" ".text\n\t" "testfn:\n\t"
++#endif
+                 "mov x0, \#60;\n\t"
+                 "whilelo p0.s, xzr, x0;\n\t"
+                 "mov z0.s, p0/z, \#55;\n\t"
+@@ -2197,10 +2206,12 @@ AC_CACHE_CHECK([whether GCC inline assembler supports AArch64 SVE2 instructions]
+         else
+           gcry_cv_gcc_inline_asm_aarch64_sve2=no
+           AC_LINK_IFELSE([AC_LANG_PROGRAM(
+-          [[__asm__(
+-                ".cpu generic+simd+sve2\n\t"
+-                ".text\n\t"
+-                "testfn:\n\t"
++          [[
++#ifdef __APPLE__
++            __asm__(".cpu generic+simd+sve2\n\t" ".text\n\t" "_testfn:\n\t"
++#else
++            __asm__(".cpu generic+simd+sve2\n\t" ".text\n\t" "testfn:\n\t"
++#endif
+                 ";\n\t"
+                 "eor3 z0.d, z0.d, z1.d, z2.d;\n\t"
+                 "ext z8.b, {z20.b, z21.b}, \#3;\n\t"
+@@ -2231,10 +2242,12 @@ AC_CACHE_CHECK([whether GCC inline assembler supports AArch64 SHA3/SHA512/SM3/SM
+         else
+           gcry_cv_gcc_inline_asm_aarch64_sha3_sha512_sm3_sm4=no
+           AC_LINK_IFELSE([AC_LANG_PROGRAM(
+-          [[__asm__(
+-                ".arch armv8.2-a+sha3+sm4\n\t"
+-                ".text\n\t"
+-                "testfn:\n\t"
++          [[
++#ifdef __APPLE__
++            __asm__(".arch armv8.2-a+sha3+sm4\n\t" ".text\n\t" "_testfn:\n\t"
++#else
++            __asm__(".arch armv8.2-a+sha3+sm4\n\t" ".text\n\t" "testfn:\n\t"
++#endif
+ 
+                 /* Test for SHA512 instructions */
+                 "sha512h q0, q0, v0.2d;\n\t"
+-- 
+2.50.1 (Apple Git-155)
+
