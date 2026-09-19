@@ -140,7 +140,7 @@ Silicon macOS.
 
 ## Author
 
-Jan Kuželka — https://kuzelka.dev
+Jan Kuželka — [https://kuzelka.dev](https://kuzelka.dev)
 
 ## License
 
