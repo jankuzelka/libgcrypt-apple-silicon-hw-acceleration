@@ -142,6 +142,12 @@ Silicon macOS.
 
 Jan Kuželka — [https://kuzelka.dev](https://kuzelka.dev)
 
+## Support
+
+If you find this patch useful, you can support my work.
+
+[![Support my work](https://img.shields.io/badge/Support%20my%20work-2F81F7?logo=buy-me-a-coffee&logoColor=white)](https://buymeacoffee.com/jankuzelka)
+
 ## License
 
 The patches modify libgcrypt source files and follow the licensing terms of the
